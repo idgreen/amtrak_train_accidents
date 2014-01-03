@@ -1,0 +1,187 @@
+#Train Accident Project Code
+
+#Set working directory and source all files
+setwd("/Users/student/Documents/SYS6021/TrainAccidents")
+source("/Users/student/Documents/SYS6021/AccidentInput.R")
+source("/Users/student/Documents/SYS6021/PCAplots.R")
+source("/Users/student/Documents/SYS6021/SeidelPlot.R")
+source("/Users/student/Documents/SYS6021/SPM_Panel.R")
+source("/Users/student/Documents/SYS6021/TestSet.R")
+
+#Read in the data for all years
+acts1<-read.table("RailAccidents01.txt", sep=",", header=T)
+acts2<-read.table("RailAccidents02.txt", sep=",", header=T)
+acts3<-read.table("RailAccidents03.txt", sep=",", header=T)
+acts4<-read.table("RailAccidents04.txt", sep=",", header=T)
+acts5<-read.table("RailAccidents05.txt", sep=",", header=T)
+acts6<-read.table("RailAccidents06.txt", sep=",", header=T)
+acts7<-read.table("RailAccidents07.txt", sep=",", header=T)
+acts8<-read.table("RailAccidents08.txt", sep=",", header=T)
+acts9<-read.table("RailAccidents09.txt", sep=",", header=T)
+acts10<-read.table("RailAccidents10.txt", sep=",", header=T)
+acts11<-read.table("RailAccidents11.txt", sep=",", header=T)
+
+#Combine the data frames for all 11 years into TotalActs
+acts <- file.inputl("/Users/MBP07/Desktop/UVA/Fall 2012/SYS 6021/Train Accidents")
+#one data frame
+lapply(acts,dim) 
+#gives dimensions of all years
+setdiff(colnames(acts[[1]]), colnames(acts[[8]]))
+comvar<-intersect(colnames(acts[[1]]), colnames(acts[[8]]))
+#Combines the data frames for 11 years
+TotalActs<-rbind(acts[[1]][,comvar]) 
+for(i in 2:11)
+{
+TotalActs <- rbind(TotalActs, acts[[i]][,comvar])
+}
+
+#Histograms of Accident Damage, Total Killed, Total Injured, Equipment Damage
+par(mfrow=c(3,4))
+hist(acts1$TOTKLD, main="Total Deaths 2001", xlab="Deaths", col="steelblue")
+hist(acts2$TOTKLD, main="Total Deaths 2002", xlab="Deaths", col="steelblue")
+hist(acts3$TOTKLD, main="Total Deaths 2003", xlab="Deaths", col="steelblue")
+hist(acts4$TOTKLD, main="Total Deaths 2004", xlab="Deaths", col="steelblue")
+hist(acts5$TOTKLD, main="Total Deaths 2005", xlab="Deaths", col="steelblue")
+hist(acts6$TOTKLD, main="Total Deaths 2006", xlab="Deaths", col="steelblue")
+hist(acts7$TOTKLD, main="Total Deaths 2007", xlab="Deaths", col="steelblue")
+hist(acts8$TOTKLD, main="Total Deaths 2008", xlab="Deaths", col="steelblue")
+hist(acts9$TOTKLD, main="Total Deaths 2009", xlab="Deaths", col="steelblue")
+hist(acts10$TOTKLD, main="Total Deaths 2010", xlab="Deaths", col="steelblue")
+hist(acts11$TOTKLD, main="Total Deaths 2011", xlab="Deaths", col="steelblue")
+attach(TotalActs)
+
+hist(TOTKLD, main="Total Deaths", xlab="Deaths", col="steelblue")
+hist(TOTINJ, main="Total Injuries", xlab="Injuries", col="steelblue")
+hist(EQPDMG, main="Equipment Damage", xlab="Dollars ($)", col="steelblue")
+detach(TotalActs)
+
+#Boxplots of the same stuff
+par(mfrow=c(2,2))
+attach(TotalActs)
+boxplot(ACCDMG, main="Accident Damage", xlab="Dollars ($)", col="steelblue")
+boxplot(TOTKLD, main="Total Deaths", xlab="Deaths", col="steelblue")
+boxplot(TOTINJ, main="Total Injuries", xlab="Injuries", col="steelblue")
+boxplot(EQPDMG, main="Equipment Damage", xlab="Dollars ($)", col="steelblue")
+detach(TotalActs)
+
+#Scatterplot Matrix
+par(mfrow=c(1,1))
+uva.pairs("~ACCDMG+CARSDMG+EQATT+EQPDMG+HIGHSPD+LOADF1+POSITON1+TEMP+TOTINJ+TOTKLD+TRKDMG+TRNSPD+TRKDMG", data=NodupeTotalActs)
+
+#Cause
+Cause<-rep(NA, nrow(TotalActs))
+Cause[which(substr(TotalActs$CAUSE,1,1)=="M")] <- "M"
+Cause[which(substr(TotalActs$CAUSE,1,1)=="T")] <- "T"
+Cause[which(substr(TotalActs$CAUSE,1,1)=="S")] <- "S"
+Cause[which(substr(TotalActs$CAUSE,1,1)=="H")] <- "H"
+Cause[which(substr(TotalActs$CAUSE,1,1)=="E")] <- "E"
+Cause<-as.factor(Cause)
+
+#BoxPlot of accident damage vs. accident cause
+library(lattice)
+bwplot(Cause~ACCDMG, main="Accident Damage vs. Cause", xlab="Damge ($)", ylab = "Cause", data=TotalActs)
+
+bwplot(Cause~ACCDMG, main="Accident Damage vs. Cause", xlab="Damge ($)", ylab = "Cause", data=TotalActs)
+
+#Accident damage ~ speed conditioned on cause
+xyplot(ACCDMG~TRNSPD|Cause, main="Damage vs. speed conditioned on cause", xlab="Train Speed (MPH)", ylab="Accident Damage ($)", type=c("r", "p"), data=TotalActs)
+
+#Speed plots conditioned on type of equipment
+xyplot(ACCDMG~TRNSPD|as.factor(TYPEQ), main="Damage vs. speed conditioned on train type", data=TotalActs, type=c("r","p"))
+
+#Proportion of accidents that cause deaths
+kldbox<-boxplot(NodupeTotalActs$TOTKLD)
+length(kldbox$out)/nrow(NodupeTotalActs)
+dmgbox<-boxplot(TotalActs$ACCDMG)
+xacts2<-NodupeTotalActs[NodupeTotalActs$ACCDMG>dmgbox$stats[5]&NodupeTotalActs$TOTKLD>0,] #extreme events
+
+#Principal Components Analysis
+xacts.pca<-princomp(NodupeTotalActs[,c("CARSDMG","EQPDMG","TRKDMG","ACCDMG","TOTKLD","TOTINJ")],cor=T)
+biplot(xacts.pca) #here CARSDMG highly correlated w/ comp 2
+screeplot(xacts.pca, main="Variance for PC of metrics")
+
+#Plot the Loadings
+loadingsplot(xacts.pca, k=2, col="steelblue")
+xacts.pca$loadings
+cumplot(xacts.pca, col="steelblue")
+
+#Look at the duplicates
+duplicated(TotalActs[,c("YEAR", "MONTH", "DAY", "TIMEHR", "TIMEMIN", "ACCDMG", "TOTKLD")])
+dups <- list()
+for(i in 40:54)
+{
+  dups[[i-39]] <- which(TotalActs$INCDTNO == TotalActs$INCDTNO[i])
+  
+}
+
+dups
+
+TotalActs[dups[[1]],]
+
+#Remove the duplicates
+NodupeTotalActs <- TotalActs[!duplicated(TotalActs[,c("YEAR", "MONTH", "DAY", "TIMEHR", "TIMEMIN", "ACCDMG", "TOTKLD")]),]
+dim(NodupeTotalActs) 
+#this is the set of non-duplicates--THIS WORKS
+
+#Does removing the duplicates make a difference?
+unxacts.pca<-princomp(nodupeTotalActs[,c("CARSDMG","EQPDMG","TRKDMG","ACCDMG","TOTKLD","TOTINJ")],cor=T)
+biplot(unxacts.pca)
+screeplot(nondup.pca, main="Variance for PC of metrics")
+
+#Linear Modeling
+TotalActs.lm1<-lm(ACCDMG~TEMP+TONS+CARS, data=TotalActs)
+summary(TotalActs.lm1)
+coefficients(TotalActs.lm1) #gives you the coefficients (duh)
+AIC(TotalActs.lm1)
+
+#Build another linear model and do an analysis of variance
+TotalActs.lm2<-lm(ACCDMG~TEMP+TRNSPD+TONS+CARS+HEADEND1)
+anova(TotalActs.lm1,TotalActs.lm2)
+
+#PMSE value vectors
+pmse1.result<-NULL
+pmse2.result<-NULL
+
+#I cleaned this part up a little bit...still unsure what we are doing here, though
+for(i in c(1:20)){ 
+  #set test sets size: 
+  test.size<-1/3 
+  # generate training sets and test sets from original data: 
+  TotalActs.data<-test.set(TotalActs,test.size) 
+  
+  # Build model with train set: 
+  lm1.train<-lm(ACCDMG ~ TEMP + TRNSPD + TONS + CARS + HEADEND1,data=TotalActs.data$train) 
+  lm2.train<-lm(ACCDMG ~ TEMP + TONS + CARS,data=TotalActs.data$train) 
+  # First, how to predict with lm models:  
+  lm1.pred<-predict(lm1.train,newdata=TotalActs.data$test) 
+  
+  lm2.pred<-predict(lm2.train,newdata=TotalActs.data$test) 
+  
+  # Next, compute PMSE:  
+  pmse.lm1<-mse(lm1.pred,TotalActs.data$test$ACCDMG)  
+  pmse.lm2<-mse(lm2.pred,TotalActs.data$test$ACCDMG) 
+  pmse1.result<-c(pmse1.result,pmse.lm1) 
+  
+  pmse2.result<-c(pmse2.result,pmse.lm2)
+}
+  plot(pmse1.result,type='b',col='blue') 
+  lines(pmse2.result,type='b',col='red')
+  
+#T-test
+t.test(pmse1.result, pmse2.result, paired=T)
+
+#See all 4 important plots on one screen
+par(mfrow=c(2,2))
+plot(TotalActs.lm1)
+
+#BoxCox plot---Can't get this to work.  Says response variable must be positive?
+library(MASS)
+boxcox(TotalActs.lm1,plotit=T)
+
+#Create a model with polynomial combinations
+TotalActs.lm3<-lm(ACCDMG~(TEMP+TRNSPD+TONS+CARS)^2+I(TRNSPD^2))
+
+TONS.factor<-TotalActs$TONS #create a categorical variable for high and low tons
+TONS.factor[which(TotalActs$TONS<142)]<-'low tons'
+TONS.factor[which(TotalActs$TONS>=142)]<-'high tons'
+interaction.plot(TotalActs$TRNSPD, TONS.factor, log(TotalActs$ACCDMG+0.01)) #interaction plot for TRNSPD in terms of high and low weight
